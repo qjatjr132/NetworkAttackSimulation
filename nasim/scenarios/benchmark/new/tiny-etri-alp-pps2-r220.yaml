@@ -1,0 +1,164 @@
+# A tiny standard (one public network) network configuration
+
+# + ETRI + alpinelab: add attack technique (23-0820)
+#   - eNASim : release_v2.2.0
+#   - 공격 테크닉 버전 : 24-0819
+
+#
+# 4 hosts
+# 2 subnets
+
+# 15 attack techniques - provided by alpinelab
+
+#
+# Optimal path: (수정해야 함)
+# (e_ssh, (1, 0)) -> subnet_scan -> (e_ssh, (3, 0)) -> (pe_tomcat, (3, 0))
+#     -> (e_ssh, (2, 0)) -> (pe_tomcat, (2, 0))
+# Score = 200 - (6*1) = 195
+#
+
+# S1 (2 hosts), S2 (3 hosts)
+subnets: [2, 3]
+# S0(Internet), S1, S2
+topology: [[ 1, 1, 0],
+           [ 1, 1, 1],
+           [ 0, 1, 1]]
+sensitive_hosts:
+  (1, 1): 10     # SW 중계 서버 100
+  (2, 1): 10     # 웹 서버 100
+  (2, 2): 10     # DB 서버 100
+
+
+# kjkoo : 공격테크닉 pre/post-state key 반영
+os:
+  - Windows
+  - Linux
+services:
+  - SMB
+  - FTP
+  - Web
+  - SSH
+  - DB
+processes:
+  - process_tomcat
+
+# kjkoo : files, vulnerabilities 목록
+#   - 추가될 때 마다 업데이트하면 된다.
+files:
+  - Password_ID-1
+  - DB_file
+vulnerabilities:
+  - SMB_CVE-1
+  - Web_CVE-1
+  - OS_CVE-1
+
+# kjkoo
+#   - 공격테크닉이 설치된 디렉토리만 알려줌 : pps-v2
+# attack_techs: attack_techs/attack_tech_pps_v2_24-0404
+# attack_techs: attack_techs/attack_tech_pps_v2_24-0508
+# attack_techs: attack_techs/attack_tech_pps_v2_24-0510
+# attack_techs: attack_techs/attack_tech_pps_v2_24-0819
+attack_techs: attack_techs/attack_tech_pps_v2_24-0829
+defense_techs: defense_techs/Mitigation
+
+# kjkoo : (24-0807)
+# 취약점 look-up table
+
+# kjkoo : 일단, exploits과 privesc를 유지한다.
+#   - service, os, process 이름 변경
+exploits:
+  e_ssh:
+    service: SSH
+    os: Linux
+    prob: 0.8
+    cost: 1
+    access: user
+privilege_escalation:
+  pe_tomcat:
+    process: process_tomcat
+    os: Linux
+    prob: 1.0
+    cost: 1
+    access: root
+
+
+service_scan_cost: 1
+os_scan_cost: 1
+subnet_scan_cost: 1
+process_scan_cost: 1
+
+# modified
+host_configurations:
+  # 공격자 단말
+  (1, 0):
+    os: Windows   # Windows(7)
+    services: [SMB]
+    processes: []
+    files: []
+    vulnerabilities: []
+    compromised: True
+    ips: []
+    pw_shared: []
+    # which services to deny between individual hosts
+    #firewall:
+    #  (3, 0): []
+
+  # SW 중계 서버 (IP1)
+  (1, 1):
+    os: Windows   # Windows(7)
+    services: [SMB, FTP]
+    processes: [ ]
+    # 신규 추가
+    files: [ ]
+    vulnerabilities: [SMB_CVE-1]
+    ips: ['(2,0)']    # multiple-ip : list->tuple 변화해서 사용
+    pw_shared: []
+
+  # SW 중계 서버 (IP2)
+  (2, 0):
+    os: Windows   # Windows_server_2008
+    services: [SMB, FTP]
+    processes: [ ]
+    files: [ ]
+    vulnerabilities: [SMB_CVE-1]
+    ips: ['(1,1)']
+    pw_shared: []
+
+  # 업무 시스템 서버 (WebServer)
+  (2, 1):
+    os: Linux
+    services: [Web]     # 웹서버가 구동되고 있다는 것
+    processes: []
+    # 신규 추가
+    files: [Password_ID-1]
+    vulnerabilities: [Web_CVE-1, OS_CVE-1]
+    ips: []
+    pw_shared: ['(2,2)']              # DB서버와 password 공유
+    #firewall:
+    #  (1, 0): [ssh]
+
+  # 데이터베이스
+  (2, 2):
+    os: Linux
+    services: [SSH, DB]     # ssh 서버가 구동되고 있다는 것
+    processes: []
+    # 신규 추가
+    files: [Password_ID-1, DB_file]
+    vulnerabilities: []
+    ips: []
+    pw_shared: ['(2,1)']
+
+# two row for each connection between subnets as defined by topology
+# one for each direction of connection
+# list which services to allow
+# (23-05015) 수정해야 함
+# 서브넷 단위 (subnet-1, subnet-2) : direction (-> : allowed)
+firewall:
+  (0, 1): []
+  (1, 0): []
+  (1, 2): []
+  (2, 1): []
+
+
+step_limit: 1000
+

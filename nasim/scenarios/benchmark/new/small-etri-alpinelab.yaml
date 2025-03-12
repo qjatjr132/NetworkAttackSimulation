@@ -1,0 +1,194 @@
+# 서브넷 설정: S1 (3 hosts), S2 (4 hosts), S3 (5 hosts)
+# S0(Internet), S1, S2, S3
+subnets: [3, 4, 5]
+
+# 네트워크 토폴로지 설정
+topology: [[ 1, 1, 0, 0], # S0 (Internet) 연결: S1만 연결
+           [ 1, 1, 1, 1], # S1 연결: 모든 서브넷과 연결
+           [ 0, 1, 1, 1], # S2 연결: S1, S2, S3와 연결
+           [ 0, 1, 1, 1]] # S3 연결: S1, S2, S3와 연결
+
+# 민감한 호스트 설정
+sensitive_hosts:
+  (1, 1): 100     # SW 중계 서버
+  (2, 1): 100     # 웹 서버
+  (2, 2): 100     # DB 서버
+
+
+# kjkoo : 공격테크닉 pre/post-state key 반영
+
+# 운영체제 설정
+os:
+  - platform_windows_10
+  - platform_windows_server_2008
+  - platform_linux_ubuntu
+
+# 서비스 설정
+services:
+  - service_rdp
+  - service_webserver
+  - service_ssh
+
+# 프로세스 설정
+processes:
+  - process_tomcat
+
+# kjkoo : files, vulnerabilities 목록
+#   - 추가될 때 마다 업데이트하면 된다.
+files:
+  - file_password_credential
+  - file_database
+
+# 취약점 설정
+vulnerabilities:
+  - vuln_rdp
+  - vuln_webserver
+
+# kjkoo
+#   - 공격테크닉이 설치된 디렉토리만 알려줌
+attack_techs: attack_techs/attack_tech_23-0502
+
+defense_techs: defense_techs/defend_tech
+
+# kjkoo : 일단, exploits과 privesc를 유지한다.
+#   - service, os, process 이름 변경
+
+# 공격 및 취약점 활용 설정
+exploits:
+  e_ssh:
+    service: service_ssh
+    os: platform_linux_ubuntu 
+    prob: 0.8
+    cost: 1
+    access: user
+
+# 권한 상승 설정
+privilege_escalation:
+  pe_tomcat:
+    process: process_tomcat
+    os: platform_linux_ubuntu
+    prob: 1.0
+    cost: 1
+    access: root
+
+# 스캔 비용 설정
+service_scan_cost: 1
+os_scan_cost: 1
+subnet_scan_cost: 1
+process_scan_cost: 1
+
+# 호스트 구성 설정
+# modified
+host_configurations:
+  # 공격자 단말
+  (1, 0):
+    os: platform_windows_10
+    services: [service_rdp]
+    processes: []
+    files: []
+    vulnerabilities: []
+    compromised: True
+    ips: []
+    pw_shared: []
+    # which services to deny between individual hosts
+    #firewall:
+    #  (3, 0): []
+  # SW 중계 서버 (IP1)
+  (1, 1):
+    os: platform_windows_server_2008
+    services: [service_rdp]
+    processes: [ ]
+    # 신규 추가
+    files: [ ]
+    vulnerabilities: [vuln_rdp]
+    ips: ['(2,0)']    # multiple-ip : list->tuple 변화해서 사용
+    pw_shared: []
+  # SW 중계 서버 (IP2)
+  (2, 0):
+    os: platform_windows_server_2008
+    services: [service_rdp]
+    processes: [ ]
+    files: [ ]
+    vulnerabilities: [vuln_rdp]
+    ips: ['(1,1)']
+    pw_shared: []
+  # 업무 시스템 서버 (WebServer)
+  (2, 1):
+    os: platform_linux_ubuntu
+    services: [service_webserver]     # 웹서버가 구동되고 있다는 것
+    processes: []
+    # 신규 추가
+    files: [file_password_credential]
+    vulnerabilities: [ vuln_webserver ]
+    ips: []
+    pw_shared: ['(2,2)']              # DB서버와 password 공유
+    #firewall:
+    #  (1, 0): [ssh]
+  # 데이터베이스
+  (2, 2):
+    os: platform_linux_ubuntu
+    services: [service_ssh]     # ssh 서버가 구동되고 있다는 것
+    processes: []
+    # 신규 추가
+    files: [file_password_credential, file_database]
+    vulnerabilities: []
+    ips: []
+    pw_shared: ['(2,1)']
+  # S3 호스트 구성
+  (3, 0):
+    os: platform_linux_ubuntu
+    services: [service_ssh]
+    processes: []
+    files: [file_password_credential]
+    vulnerabilities: []
+    ips: []
+    pw_shared: []
+  (3, 1):
+    os: platform_linux_ubuntu
+    services: [service_webserver]
+    processes: []
+    files: [file_password_credential]
+    vulnerabilities: [vuln_webserver]
+    ips: []
+    pw_shared: []
+  (3, 2):
+    os: platform_linux_ubuntu
+    service: [service_ssh]
+    processes: []
+    files: [file_password_credential]
+    vulnerabilities: []
+    ips: []
+    pw_shared: []
+  (3, 3):
+    os: platform_linux_ubuntu
+    service: [service_webserver]
+    processes: []
+    files: [file_password_credential]
+    vulnerabilities: [vuln_webserver]
+    ips: []
+    pw_shared: []
+  (3, 4):
+    os: platform_linux_ubuntu
+    service: [service_webserver]
+    processes: []
+    files: [file_password_credential]
+    vulnerabilities: [vuln_webserver]
+    ips: []
+    pw_shared: []
+
+# two row for each connection between subnets as defined by topology
+# one for each direction of connection
+# list which services to allow
+# (23-05015) 수정해야 함
+# 서브넷 단위 (subnet-1, subnet-2) : direction (-> : allowed)
+firewall:
+  (0, 1): []
+  (1, 0): []
+  (1, 2): []
+  (2, 1): []
+  (1, 3): [] # S1과 S3 간 연결
+  (2, 3): [] # S2와 S3 간 연결
+  (3, 1): [] # S3과 S1 간 연결
+  (3, 2): [] # S3과 S2 간 연결
+
+step_limit: 1000

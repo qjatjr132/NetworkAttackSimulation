@@ -1,0 +1,63 @@
+attack_technique: T1005
+display_name: 'Data from Local System'
+category:
+    - Collection
+atomic_tests:
+    - name: 'Data from Local System'
+      description: |
+        English: Find or discover files on the file system
+        References:
+        http://osxdaily.com/2013/01/29/list-all-files-subdirectory-contents-recursively/
+        https://perishablepress.com/list-files-folders-recursively-terminal/
+
+        Korean:
+        bash를 사용하여 파일 시스템에서 passwd 파일을 찾거나 검색하는 기법
+
+         - Execute : 파일 시스템에서 파일 검색
+         - Pre : 필요 없음
+         - Input : 검색 명령의 결과를 저장할 파일의 경로
+         - Dependency: 필요 없음
+         - Output : 검색 명령의 결과를 저장할 파일
+         - Post : 검색 명령의 결과를 저장할 파일 존재 확인
+
+      supported_platforms:
+        - linux
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        output_file:
+            description: Output file used to store the results.
+            type: Path
+            default: /tmp/T1005/T1005@4_result.txt
+      dependency_executor_name: ""
+      dependencies: []
+      executor:
+        name: bash
+        command: |
+            output_file="#{output_file}"; mkdir ${output_file%/*} \; 2> /dev/null
+            PASSWORD_FILE="/etc/passwd"
+
+            if [ -f "$PASSWORD_FILE" ]; then
+                echo "$PASSWORD_FILE" > "#{output_file}"
+            else
+                echo "password " > "#{output_file}"
+            fi
+      output:
+        output_executor_name: bash
+        command: |
+            ls #{output_file}
+      post:
+        post_executor_name: bash
+        command: |
+            if [ -f "#{output_file}" ]; then exit 0; else exit 1; fi;
+      technique_remote: False
+      dest:
+        pre_state:
+          - Compromised : True
+          - OS_type : Linux
+          - OS_status : Running
+          - Password_a : Read
+        post_state:
+          - Password : True
+          - Password_s : Discovered

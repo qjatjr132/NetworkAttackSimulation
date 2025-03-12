@@ -1,0 +1,94 @@
+# A tiny standard (one public network) network configuration
+
+# + ETRI : add attack technique (23-0315)
+
+#
+# 3 hosts
+# 3 subnets
+# 1 service
+# 1 process
+# 1 os
+# 1 exploit
+# 1 privilege escalation
+#
+# Optimal path:
+# (e_ssh, (1, 0)) -> subnet_scan -> (e_ssh, (3, 0)) -> (pe_tomcat, (3, 0))
+#     -> (e_ssh, (2, 0)) -> (pe_tomcat, (2, 0))
+# Score = 200 - (6*1) = 195
+#
+subnets: [1, 1, 1]
+topology: [[ 1, 1, 0, 0],
+           [ 1, 1, 1, 1],
+           [ 0, 1, 1, 1],
+           [ 0, 1, 1, 1]]
+sensitive_hosts:
+  (2, 0): 100
+  (3, 0): 100
+os:
+  - linux
+services:
+  - ssh
+processes:
+  - tomcat
+exploits:
+  e_ssh:
+    service: ssh
+    os: linux
+    prob: 0.8
+    cost: 1
+    access: user
+privilege_escalation:
+  pe_tomcat:
+    process: tomcat
+    os: linux
+    prob: 1.0
+    cost: 1
+    access: root
+service_scan_cost: 1
+os_scan_cost: 1
+subnet_scan_cost: 1
+process_scan_cost: 1
+host_configurations:
+  (1, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+    # which services to deny between individual hosts
+    firewall:
+      (3, 0): [ssh]
+  (2, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+    firewall:
+      (1, 0): [ssh]
+  (3, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+# two row for each connection between subnets as defined by topology
+# one for each direction of connection
+# list which services to allow
+firewall:
+  (0, 1): [ssh]
+  (1, 0): []
+  (1, 2): []
+  (2, 1): [ssh]
+  (1, 3): [ssh]
+  (3, 1): [ssh]
+  (2, 3): [ssh]
+  (3, 2): [ssh]
+step_limit: 1000
+# kjkoo
+#   - pre/post_state를 구분할 필요가 없을 것 같다. (23-0409)
+#     : 여기에 있는 것은 상태 테이블에 반영될 특징들이기 때문
+#   - 공격테크닉이 pre/post-state 정보를 가지고 있어서, (action)을 수행하기 전에 값을 체크
+#     : 모의 실행 기능에서 반영하면 됨.
+attack_techs: attack_techs
+attack_pre_state:
+  - nmap_tool
+  - msf_tool
+  - windows
+attack_post_state:
+  - Active_Scanning_IP_Blocks_file
+  - Exploit_Application_RCE_file

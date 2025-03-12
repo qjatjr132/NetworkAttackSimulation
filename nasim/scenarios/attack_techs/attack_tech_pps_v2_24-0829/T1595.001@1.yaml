@@ -1,0 +1,98 @@
+attack_technique: T1595.001
+display_name: 'Active Scanning: Scanning IP Blocks'
+category:
+    - Reconnaissance
+progress: Complete
+atomic_tests: 
+    - name: 'Active Scanning: Scanning IP Blocks'
+      description: |
+        English : Adversaries may scan victim IP blocks to gather information that can be used during targeting. 
+        Public IP addresses may be allocated to organizations by block, or a range of sequential addresses. 
+        
+        Korean :
+        공격 대상 IP 블록을 스캔하여 정보를 수집하는 기법
+        
+         - Execute : 스캔 후 파일로 저장
+         - Pre : 필요 없음
+         - Input : IP, 스캔 정보 파일 경로
+         - Dependency : nmap 확인 및 설치 안내
+         - Output : 스캔 정보 파일
+         - Post : 스캔 정보 파일 존재
+                
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        IP:
+            description: IP to Scan
+            type: String
+            default: 192.168.102.0/24
+        output_file:
+            description: Path where results will be placed
+            type: Path
+            default: '$env:Temp\T1595.001\T1595.001@1.txt'
+      dependency_executor_name: powershell
+      dependencies:
+        - description: |
+            Install nmap.exe for testing
+          prereq_command: |
+            nmap -h && echo 0 || echo 1
+          get_prereq_command: |
+            echo "Please install nmap.exe directly Download URL:https://nmap.org/download.html#windows"
+      executor:
+        name: powershell
+        command: |
+            New-Item -ItemType Directory (Split-Path #{output_file}) -Force | Out-Null
+            nmap #{IP} -oS #{output_file}
+      output:
+        output_executor_name: powershell
+        command: |
+            dir #{output_file}
+      post:
+        post_executor_name: powershell
+        command: |
+            $file = Get-ChildItem #{output_file} -File | Measure-Object -Property length -sum
+            if ($file.sum -ne 0) { exit 0 } else { exit 1}
+      technique_remote: True
+      source:
+        pre_state: 
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+      dest:
+        pre_state:
+          - Compromised : False
+          - Reachable : True
+          - Discovered : False
+        post_state:
+          - Discovered : True
+          - OS_type : Linux, Windows, macOS
+          - OS_status : Running
+          - RDP : True or False
+          - VNC : True or False
+          - Web : True or False
+          - DB : True or False
+          - FireWall : True or False
+          - AV : True or False
+          - Mail : True or False
+          - SSH : True or False
+          - FTP : True or False
+          - Log4j : True or False
+          - Tomcat : True or False
+          - EternalBlue : True or False
+          - SMB : True or False
+          - RDP_s : Running or None
+          - VNC_s : Running or None
+          - Web_s : Running or None
+          - DB_s : Running or None
+          - FireWall_s : Running or None
+          - AV_s : Running or None
+          - Mail_s : Running or None
+          - SSH_s : Running or None
+          - FTP_s : Running or None
+          - Log4j_s : Running or None
+          - Tomcat_s : Running or None
+          - EternalBlue_s : Running or None
+          - SMB_s : Running or None

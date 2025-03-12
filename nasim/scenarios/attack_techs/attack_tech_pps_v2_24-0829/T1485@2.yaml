@@ -1,0 +1,56 @@
+attack_technique: T1485
+display_name: Data Destruction
+category:
+    - Impact
+progress: Complete
+atomic_tests:
+    - name: Linux - Data Destruction 
+      description: |
+        English : Data Destruction
+
+        Korean:
+        rm -rf를 사용해 Database file 삭제하는 기법   
+
+         - Execute : rm -rf사용해 데이터베이스 파일 삭제
+         - Pre : 파일 존재 확인
+         - Input : 삭제할 파일 경로
+         - dependencies: 필요 없음
+         - Output : 파일 존재(X)
+         - Post : 파일 존재(X) 확인
+      
+      supported_platforms:
+        - linux
+      pre:
+        prepare_executor_name: bash
+        command: |
+            if [ -f "#{delete_file}" ]; then exit 0; else exit 1; fi;
+      input_arguments:
+        delete_file:
+            description: delete db file path.
+            type: Path
+            default: '/var/lib/mysql/test'
+      dependency_executor_name: ""
+      dependencies: []
+      executor:
+        name: bash
+        command: |
+            sudo mv -r #{delete_file} #{delete_file}.bak
+            sudo rm -rf #{delete_file}
+      output:
+        output_executor_name: bash
+        command: |
+            ls #{delete_file}
+      post:
+        post_executor_name: bash
+        command: |
+            if [ -f "#{delete_file}" ]; then sudo mv -r #{delete_file}.bak #{delete_file}; exit 1; else sudo mv -r #{delete_file}.bak #{delete_file}; exit 0; fi;
+      technique_remote: False
+      dest:
+        pre_state:
+          - Compromised : True
+          - OS_type : Linux
+          - OS_status : Running
+          - DB_file : True
+          - DB_file_a : Write
+        post_state:
+          - DB_file_s : Deleted

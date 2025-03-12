@@ -1,0 +1,185 @@
+# A smai standard (one public network) network configuration
+#
+# 16 hosts
+# 5 subnets
+# 1 service
+# 1 process
+# 1 os
+# 1 exploit
+# 1 privilege escalation
+subnets:   [ 1, 2, 5, 4, 4, 1, 2, 5, 4]
+topology: [[ 1, 1, 0, 0, 0, 0, 1, 0, 0, 0],
+           [ 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+           [ 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+           [ 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+           [ 0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+           [ 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+           [ 1, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+           [ 0, 0, 0, 0, 0, 0, 1, 0, 1, 0],
+           [ 0, 0, 0, 0, 0, 0, 0, 1, 0, 1 ],
+           [ 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 ]]
+sensitive_hosts:
+  (2, 0): 100
+  (5, 0): 100
+os:
+  - linux
+services:
+  - ssh
+processes:
+  - tomcat
+exploits:
+  e_ssh:
+    service: ssh
+    os: linux
+    prob: 0.8
+    cost: 1
+    access: user
+privilege_escalation:
+  pe_tomcat:
+    process: tomcat
+    os: linux
+    prob: 1.0
+    cost: 1
+    access: root
+service_scan_cost: 1
+os_scan_cost: 1
+subnet_scan_cost: 1
+process_scan_cost: 1
+host_configurations:
+  (1, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (2, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (2, 1):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (3, 0):
+    os: linux
+    services: [ssh]
+    processes: []
+  (3, 1):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (3, 2):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (3, 3):
+    os: linux
+    services: [ssh]
+    processes: []
+  (3, 4):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (4, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (4, 1):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (4, 2):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (4, 3):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (5, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (5, 1):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (5, 2):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (5, 3):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (6, 0):
+    os: linux
+    services: [ ssh ]
+    processes: [ tomcat ]
+    value : -10
+  (7, 0):
+    os: linux
+    services: [ ssh ]
+    processes: [ tomcat ]
+  (7, 1):
+    os: linux
+    services: [ ssh ]
+    processes: [ tomcat ]
+  (8, 0):
+    os: linux
+    services: [ssh]
+    processes: []
+  (8, 1):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (8, 2):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (8, 3):
+    os: linux
+    services: [ssh]
+    processes: []
+  (8, 4):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (9, 0):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+    value : -10
+  (9, 1):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (9, 2):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+  (9, 3):
+    os: linux
+    services: [ssh]
+    processes: [tomcat]
+# two row for each connection between subnets as defined by topology
+# one for each direction of connection
+# list which services to allow
+firewall:
+  (0, 1): [ssh]
+  (1, 0): [ssh]
+  (0, 6): [ssh]
+  (6, 0): [ssh]
+  (1, 2): [ssh]
+  (2, 1): [ssh]
+  (2, 3): [ssh]
+  (3, 2): [ssh]
+  (3, 4): [ssh]
+  (4, 3): [ssh]
+  (3, 5): [ssh]
+  (5, 3): [ssh]
+  (6, 7): [ssh]
+  (7, 6): [ssh]
+  (8, 7): [ssh]
+  (7, 8): [ssh]
+  (9, 8): [ssh]
+  (8, 9): [ssh]
+step_limit: 2000

